@@ -61,6 +61,7 @@ export async function replaceAll(data: Record<StoreName, unknown[]>, settings: S
     await tx.objectStore('meta').put(settings, 'settings');
     await tx.done;
   } catch (e) {
+    tx.done.catch(() => {}); // the abort rejects tx.done; e is the error that matters
     try { tx.abort(); } catch { /* already aborted */ }
     throw e;
   }
