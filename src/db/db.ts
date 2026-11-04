@@ -42,6 +42,12 @@ export async function put<T extends { id: string }>(store: StoreName, item: T): 
   await (await db()).put(store, item);
 }
 
+// Writes several records in one transaction: all land, or none do.
+export async function putMany(entries: [StoreName, { id: string }][]): Promise<void> {
+  const tx = (await db()).transaction([...new Set(entries.map(([s]) => s))], 'readwrite');
+  await Promise.all([...entries.map(([s, item]) => tx.objectStore(s).put(item)), tx.done]);
+}
+
 export async function remove(store: StoreName, id: string): Promise<void> {
   await (await db()).delete(store, id);
 }

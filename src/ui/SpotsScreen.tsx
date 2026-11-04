@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'preact/hooks';
-import type { AreaId, Plant, PlantKind, Spot, SpotSize, SpotType } from '../domain/types';
+import type { AreaId, LogEntry, Plant, PlantKind, Spot, SpotSize, SpotType } from '../domain/types';
 import type { ScreenProps } from './useGarden';
 import { CROPS, cropById } from '../data/crops';
 import { careDueFor, defaultCareRules, type LastDoneAnswer } from '../domain/care';
 import { addDays, formatShort, newId } from '../domain/dates';
-import { nextSpotId, put, remove } from '../db/db';
+import { nextSpotId, put, putMany, remove, type StoreName } from '../db/db';
 import { Chip, Group } from './parts';
 import { AREA_LABEL, LOG_LABEL, SIZE_LABEL, TYPE_LABEL, cropName, dueTag } from './labels';
 
@@ -68,13 +68,14 @@ function AddSpot({ state: s, reload, onClose }: ScreenProps & { onClose: () => v
     setSaving(true);
     const id = await nextSpotId(area);
     const spot: Spot = { id, area, type, size, createdAt: s.today };
-    await put('spots', spot);
+    const writes: [StoreName, { id: string }][] = [['spots', spot]];
     for (const cropId of crops) {
       const plant: Plant = { id: newId(), spotId: id, cropId, kind: cropById(cropId)!.kind, plantedOn };
-      await put('plants', plant);
-      await put('logs', { id: newId(), date: plantedOn, kind: 'plant', spotId: id, text: cropName(cropId) });
+      const log: LogEntry = { id: newId(), date: plantedOn, kind: 'plant', spotId: id, text: cropName(cropId) };
+      writes.push(['plants', plant], ['logs', log]);
     }
-    for (const r of defaultCareRules(spot, kindFor(area, crops), { fertilize: fert, soil }, s.today, s.spots.length)) await put('careRules', r);
+    for (const r of defaultCareRules(spot, kindFor(area, crops), { fertilize: fert, soil }, s.today, s.spots.length)) writes.push(['careRules', r]);
+    await putMany(writes);
     try { localStorage.setItem(LAST_AREA_KEY, area); } catch { /* storage unavailable */ }
     await reload();
     setSaving(false);
