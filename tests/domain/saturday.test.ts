@@ -46,7 +46,7 @@ test('care of the same type is grouped into one item', () => {
     ...base, spots: [spot('T-04'), spot('T-07')], careDue: [care('T-04', '2026-11-01'), care('T-07', '2026-11-02')], today: '2026-11-04',
   });
   expect(p.items).toHaveLength(1);
-  expect(p.items[0]).toMatchObject({ title: 'Fertilizer: T-04, T-07', spotIds: ['T-04', 'T-07'], group: 'overdue', daysOverdue: 6 });
+  expect(p.items[0]).toMatchObject({ title: 'Fertilizer: T-04, T-07', spotIds: ['T-04', 'T-07'], group: 'overdue', daysOverdue: 3 });
 });
 
 test('prep tasks go in the season group, after overdue', () => {
@@ -64,4 +64,12 @@ test('headerText', () => {
   const p = (totalMin: number, heldCount: number): SaturdayPlan => ({ saturday: '2026-11-07', items: [], totalMin, heldCount, budgetMin: 120 });
   expect(headerText(p(115, 4))).toBe('Plan ≈ 1h 55m of 2h · 4 items held for next week');
   expect(headerText(p(45, 0))).toBe('Plan ≈ 45m of 2h');
+});
+
+test('lateness counts from today, not from Saturday', () => {
+  const p = buildSaturdayPlan({
+    ...base, spots: [spot('T-01')], today: '2026-11-04',
+    sprays: [{ courseId: 'c', spotId: 'T-01', number: 2, total: 4, due: '2026-11-04', daysLate: 0 }],
+  });
+  expect(p.items[0]).toMatchObject({ title: 'Spray: T-01', daysOverdue: 0 });
 });

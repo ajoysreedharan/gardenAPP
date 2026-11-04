@@ -26,7 +26,7 @@ export function buildSaturdayPlan(i: {
     if (p.doneOn || p.due > saturday) continue;
     items.push({
       key: `plan:${p.id}`, group: p.source === 'prep' ? 'season' : 'planned', title: p.title,
-      spotIds: p.spotIds, estMin: p.estMin, daysOverdue: Math.max(0, daysBetween(p.due, saturday)), ref: { kind: 'plan', id: p.id },
+      spotIds: p.spotIds, estMin: p.estMin, daysOverdue: Math.max(0, daysBetween(p.due, i.today)), ref: { kind: 'plan', id: p.id },
     });
     totalMin += p.estMin;
   }
@@ -34,10 +34,10 @@ export function buildSaturdayPlan(i: {
   const spotType = new Map(i.spots.map((s) => [s.id, s.type]));
   const candidates: Candidate[] = [
     ...i.sprays.filter((s) => s.due <= saturday).map((s): Candidate => ({
-      spotId: s.spotId, estMin: i.durations.spray, overdue: daysBetween(s.due, saturday), kind: 'spray', courseId: s.courseId,
+      spotId: s.spotId, estMin: i.durations.spray, overdue: daysBetween(s.due, i.today), kind: 'spray', courseId: s.courseId,
     })),
     ...i.careDue.filter((c) => c.due <= saturday).map((c): Candidate => ({
-      spotId: c.spotId, estMin: i.durations[c.type][spotType.get(c.spotId) ?? 'pot'], overdue: daysBetween(c.due, saturday), kind: c.type,
+      spotId: c.spotId, estMin: i.durations[c.type][spotType.get(c.spotId) ?? 'pot'], overdue: daysBetween(c.due, i.today), kind: c.type,
     })),
   ].sort((a, b) => b.overdue - a.overdue);
 
