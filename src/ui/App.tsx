@@ -3,6 +3,7 @@ import { useGarden } from './useGarden';
 import { QuickAdd, type QuickAddPrefill } from './QuickAdd';
 import { TodayScreen } from './TodayScreen';
 import { SaturdayScreen } from './SaturdayScreen';
+import { SpotsScreen } from './SpotsScreen';
 import { formatShort } from '../domain/dates';
 import './styles.css';
 
@@ -16,7 +17,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>('today');
   const [adding, setAdding] = useState<QuickAddPrefill | null>(null);
 
-  const title = !state ? 'Garden' : tab === 'today' ? `Today · ${formatShort(state.today)}` : tab === 'saturday' ? 'Saturday' : 'Garden';
+  const title = !state ? 'Garden' : tab === 'today' ? `Today · ${formatShort(state.today)}` : tab === 'saturday' ? 'Saturday' : tab === 'spots' ? 'Spots' : 'Garden';
 
   return (
     <div class="app">
@@ -28,7 +29,8 @@ export function App() {
         {!state && <p class="muted center">Loading…</p>}
         {state && tab === 'today' && <TodayScreen state={state} reload={reload} />}
         {state && tab === 'saturday' && <SaturdayScreen state={state} reload={reload} />}
-        {state && !['today', 'saturday'].includes(tab) && <p class="muted center">Coming soon</p>}
+        {state && tab === 'spots' && <SpotsScreen state={state} reload={reload} onLog={(id) => setAdding({ kind: 'done', spotIds: [id] })} />}
+        {state && !['today', 'saturday', 'spots'].includes(tab) && <p class="muted center">Coming soon</p>}
       </main>
       {state && adding && (
         <div class="overlay" role="dialog" aria-label="Add">
