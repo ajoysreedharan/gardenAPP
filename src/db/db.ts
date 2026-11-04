@@ -34,6 +34,10 @@ export async function getAll<T>(store: StoreName): Promise<T[]> {
   return (await db()).getAll(store);
 }
 
+export async function get<T>(store: StoreName, id: string): Promise<T | undefined> {
+  return (await db()).get(store, id);
+}
+
 export async function put<T extends { id: string }>(store: StoreName, item: T): Promise<void> {
   await (await db()).put(store, item);
 }

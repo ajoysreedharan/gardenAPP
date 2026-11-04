@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks';
 import { useGarden } from './useGarden';
 import { QuickAdd, type QuickAddPrefill } from './QuickAdd';
 import { TodayScreen } from './TodayScreen';
+import { SaturdayScreen } from './SaturdayScreen';
 import { formatShort } from '../domain/dates';
 import './styles.css';
 
@@ -15,7 +16,7 @@ export function App() {
   const [tab, setTab] = useState<Tab>('today');
   const [adding, setAdding] = useState<QuickAddPrefill | null>(null);
 
-  const title = tab === 'today' && state ? `Today · ${formatShort(state.today)}` : 'Garden';
+  const title = !state ? 'Garden' : tab === 'today' ? `Today · ${formatShort(state.today)}` : tab === 'saturday' ? 'Saturday' : 'Garden';
 
   return (
     <div class="app">
@@ -26,7 +27,8 @@ export function App() {
       <main class="screen">
         {!state && <p class="muted center">Loading…</p>}
         {state && tab === 'today' && <TodayScreen state={state} reload={reload} />}
-        {state && tab !== 'today' && <p class="muted center">Coming soon</p>}
+        {state && tab === 'saturday' && <SaturdayScreen state={state} reload={reload} />}
+        {state && !['today', 'saturday'].includes(tab) && <p class="muted center">Coming soon</p>}
       </main>
       {state && adding && (
         <div class="overlay" role="dialog" aria-label="Add">
