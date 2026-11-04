@@ -7,7 +7,7 @@ All garden data stays on your phone. Nothing is sent anywhere.
 ## Put it on your phone (one time)
 
 1. Create a free account at github.com if you don't have one.
-2. Create a new repository called `garden` (it can be private only on paid plans for Pages; a public repo is fine — it holds app code, never your garden data).
+2. Create a new **public** repository called `garden` (GitHub Pages is free for public repos). It holds only the app's code, never your garden data.
 3. From this folder, push the code:
    ```
    git remote add origin https://github.com/<your-username>/garden.git
