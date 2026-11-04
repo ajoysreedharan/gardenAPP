@@ -7,6 +7,7 @@ import { addDays, formatShort, newId } from '../domain/dates';
 import { nextSpotId, put, putMany, remove, type StoreName } from '../db/db';
 import { Chip, Group } from './parts';
 import { CropPicker } from './CropPicker';
+import { ProblemPhoto } from './ProblemPhoto';
 import { AREA_LABEL, LOG_LABEL, SIZE_LABEL, TYPE_LABEL, cropName, dueTag } from './labels';
 
 const AREAS: AreaId[] = ['terrace', 'balconyA', 'balconyB'];
@@ -102,6 +103,7 @@ function AddSpot({ state: s, reload, onClose }: ScreenProps & { onClose: () => v
 function SpotDetail({ state: s, reload, id, onClose, onLog }: ScreenProps & { id: string; onClose: () => void; onLog?: (spotId: string) => void }) {
   const [addingPlant, setAddingPlant] = useState<string[] | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editing, setEditing] = useState<{ type: SpotType; size: SpotSize } | null>(null);
   const spot = s.spots.find((x) => x.id === id);
   if (!spot) return <p class="muted center">Spot not found. <button type="button" class="btn ghost small" onClick={onClose}>Back</button></p>;
 
@@ -125,10 +127,24 @@ function SpotDetail({ state: s, reload, id, onClose, onLog }: ScreenProps & { id
     await reload();
   }
 
+  async function saveEdit() {
+    if (!editing || !spot) return;
+    await put('spots', { ...spot, ...editing });
+    setEditing(null);
+    await reload();
+  }
+
+  // Deleting frees the ID for reuse, so everything tied to the spot goes with it.
   async function del() {
     await remove('spots', id);
     for (const p of plants) await remove('plants', p.id);
     for (const r of rules) await remove('careRules', r.id);
+    for (const l of history) await remove('logs', l.id);
+    for (const pr of s.problems.filter((x) => x.spotId === id)) await remove('problems', pr.id);
+    for (const c of s.courses.filter((x) => x.spotId === id)) await remove('courses', c.id);
+    for (const pl of s.plans.filter((x) => x.spotIds.includes(id))) {
+      await put('plans', { ...pl, spotIds: pl.spotIds.filter((x) => x !== id), doneSpotIds: pl.doneSpotIds.filter((x) => x !== id) });
+    }
     await reload();
     onClose();
   }
@@ -178,6 +194,17 @@ function SpotDetail({ state: s, reload, id, onClose, onLog }: ScreenProps & { id
         </Group>
       )}
 
+      {s.problems.some((x) => x.spotId === id) && (
+        <Group title="Problems">
+          {s.problems.filter((x) => x.spotId === id).sort((a, b) => b.seenOn.localeCompare(a.seenOn)).map((pr) => (
+            <div class="row" key={pr.id}>
+              <ProblemPhoto problem={pr} />
+              <span class="row-text">{formatShort(pr.seenOn)} · {pr.text}{pr.resolvedOn ? ` (resolved ${formatShort(pr.resolvedOn)})` : ''}</span>
+            </div>
+          ))}
+        </Group>
+      )}
+
       <Group title="History">
         {history.length === 0 && <div class="row"><span class="row-text muted">Nothing logged yet</span></div>}
         {history.map((l) => (
@@ -185,11 +212,22 @@ function SpotDetail({ state: s, reload, id, onClose, onLog }: ScreenProps & { id
         ))}
       </Group>
 
+      {editing && (
+        <Group title={`Edit ${spot.id}`}>
+          <div class="chips">{(['pot', 'bed'] as const).map((t) => <Chip key={t} on={editing.type === t} onClick={() => setEditing({ ...editing, type: t })}>{TYPE_LABEL[t]}</Chip>)}</div>
+          <div class="chips">{(['small', 'medium', 'large'] as const).map((z) => <Chip key={z} on={editing.size === z} onClick={() => setEditing({ ...editing, size: z })}>{SIZE_LABEL[z]}</Chip>)}</div>
+          <div class="actions">
+            <button type="button" class="btn ghost" onClick={() => setEditing(null)}>Cancel</button>
+            <button type="button" class="btn" onClick={saveEdit}>Save changes</button>
+          </div>
+        </Group>
+      )}
       <div class="actions">
+        {!editing && !confirmDelete && <button type="button" class="btn ghost small" onClick={() => setEditing({ type: spot.type, size: spot.size })}>Edit spot</button>}
         {!confirmDelete && <button type="button" class="btn ghost small" onClick={() => setConfirmDelete(true)}>Delete spot</button>}
         {confirmDelete && (
           <>
-            <span class="muted">Delete {spot.id} and its plants? History stays.</span>
+            <span class="muted">Delete {spot.id} with its plants and all its history?</span>
             <button type="button" class="btn ghost small" onClick={() => setConfirmDelete(false)}>Keep</button>
             <button type="button" class="btn danger small" onClick={del}>Delete</button>
           </>

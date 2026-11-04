@@ -3,7 +3,9 @@ import { careDueNow } from './useGarden';
 import { buildToday } from '../domain/today';
 import { markSprayDone } from '../domain/spray';
 import { formatShort, newId } from '../domain/dates';
-import { put } from '../db/db';
+import { get, put } from '../db/db';
+import type { PlanTask } from '../domain/types';
+import { ProblemPhoto } from './ProblemPhoto';
 import { Group, TickRow, lateTag } from './parts';
 import type { ComponentChildren } from 'preact';
 
@@ -17,9 +19,12 @@ export function TodayScreen({ state: s, reload, banner }: ScreenProps & { banner
     await reload();
   }
 
-  async function tickPlan(id: string) {
-    const plan = s.plans.find((x) => x.id === id)!;
-    await put('plans', { ...plan, doneOn: s.today, doneSpotIds: plan.spotIds });
+  async function tickPlan(id: string, spotId?: string) {
+    const plan = (await get<PlanTask>('plans', id))!;
+    if (spotId && plan.doneSpotIds.includes(spotId)) return;
+    const doneSpotIds = spotId ? [...plan.doneSpotIds, spotId] : plan.spotIds;
+    const allDone = plan.spotIds.every((x) => doneSpotIds.includes(x));
+    await put('plans', { ...plan, doneSpotIds, doneOn: allDone ? s.today : undefined });
     await reload();
   }
 
@@ -52,6 +57,21 @@ export function TodayScreen({ state: s, reload, banner }: ScreenProps & { banner
         <Group title="Planned for today">
           {view.plans.map((p) => {
             const late = lateTag(Math.max(0, (Date.parse(s.today) - Date.parse(p.due)) / 86_400_000));
+            if (p.spotIds.length > 1) {
+              return (
+                <div key={p.id}>
+                  <div class="row">
+                    <span class="row-text">{p.title} · {p.doneSpotIds.length} of {p.spotIds.length} done{p.place && ` · ${p.place}`}</span>
+                    <span class={'tag ' + late.cls}>{late.text}</span>
+                  </div>
+                  <div class="expand">
+                    {p.spotIds.map((sp) => (
+                      <TickRow key={sp} label={`${p.title} ${sp}`} done={p.doneSpotIds.includes(sp)} onTick={() => tickPlan(p.id, sp)}>{sp}</TickRow>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
             return (
               <TickRow key={p.id} label={p.title} onTick={() => tickPlan(p.id)} tag={late.text} tagClass={late.cls}>
                 {p.title}{p.spotIds.length > 0 && ` (${p.spotIds.join(', ')})`}{p.place && ` · ${p.place}`}
@@ -64,6 +84,7 @@ export function TodayScreen({ state: s, reload, banner }: ScreenProps & { banner
         <Group title="Watching">
           {view.watching.map((pr) => (
             <div class="row" key={pr.id}>
+              <ProblemPhoto problem={pr} />
               <span class="row-text">🐛 {pr.spotId} {pr.text}, since {formatShort(pr.seenOn)}</span>
               <button type="button" class="btn small ghost" onClick={() => resolve(pr.id)}>Resolved</button>
             </div>

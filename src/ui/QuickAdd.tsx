@@ -5,6 +5,7 @@ import { put } from '../db/db';
 import { newId, upcomingSaturday } from '../domain/dates';
 import { startCourse } from '../domain/spray';
 import { Chip } from './parts';
+import { downscalePhoto } from './ProblemPhoto';
 
 type Kind = 'plan' | 'problem' | 'done';
 type When = 'saturday' | 'today' | 'date';
@@ -121,7 +122,7 @@ export function QuickAdd(p: { state: GardenState; onDone: () => void; onCancel?:
           </label>
           <label class="row">
             <span class="row-text">Photo (optional)</span>
-            <input type="file" accept="image/*" capture="environment" onChange={(e) => setPhoto(e.currentTarget.files?.[0])} />
+            <input type="file" accept="image/*" capture="environment" onChange={async (e) => { const f = e.currentTarget.files?.[0]; setPhoto(f && (await downscalePhoto(f))); }} />
           </label>
         </>
       )}

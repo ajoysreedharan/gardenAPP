@@ -46,7 +46,7 @@ export function SeasonScreen({ state: s, reload }: ScreenProps) {
           const prep = s.plans.find((p) => p.source === 'prep' && !p.doneOn && p.spotIds.includes(f.spotId));
           return (
             <div class="free-row" key={f.spotId}>
-              <div><strong>{f.spotId}</strong> · {f.freeOn === s.today ? 'free now' : `free ${f.estimated ? '~' : ''}${formatShort(f.freeOn)}`}</div>
+              <div><strong>{f.spotId}</strong> · {f.harvestDue ? `harvest due ~${formatShort(f.harvestDue)} · free when pulled` : f.freeOn === s.today ? 'free now' : `free ${f.estimated ? '~' : ''}${formatShort(f.freeOn)}`}</div>
               {prep ? (
                 <div class="muted">Planned: {prep.title} · {formatShort(prep.due)}</div>
               ) : (

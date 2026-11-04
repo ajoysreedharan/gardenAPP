@@ -27,6 +27,12 @@ export function careDueNow(s: GardenState): CareDue[] {
 export function useGarden(): { state: GardenState | null; reload: () => Promise<void> } {
   const [state, setState] = useState<GardenState | null>(null);
   const reload = useCallback(async () => setState(await loadState()), []);
-  useEffect(() => { reload(); }, [reload]);
+  useEffect(() => {
+    reload();
+    // An installed app can sit in the background for days; refresh "today" and data on return.
+    const onVisible = () => { if (document.visibilityState !== 'hidden') reload(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [reload]);
   return { state, reload };
 }

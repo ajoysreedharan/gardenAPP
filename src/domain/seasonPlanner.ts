@@ -3,7 +3,8 @@ import { CROPS, cropById, type Crop } from '../data/crops';
 import { seasonOf } from './seasons';
 import { addDays, daysBetween, newId } from './dates';
 
-export interface FreeingSpot { spotId: string; freeOn: ISODate; estimated: boolean }
+// freeOn is never in the past; harvestDue keeps an estimate that has already passed.
+export interface FreeingSpot { spotId: string; freeOn: ISODate; estimated: boolean; harvestDue?: ISODate }
 
 const SIZE_RANK: Record<SpotSize, number> = { small: 0, medium: 1, large: 2 };
 const LEAD_DAYS = { transplant: 42, direct: 7, sapling: 7 } as const;
@@ -22,6 +23,7 @@ export function spotsFreeingUp(spots: Spot[], plants: Plant[], today: ISODate, h
       const freeOn = p.expectedEnd ?? addDays(p.plantedOn, cropById(p.cropId)?.daysToHarvest ?? 90);
       if (!best || freeOn < best.freeOn) best = { spotId: s.id, freeOn, estimated: !p.expectedEnd };
     }
+    if (best && best.freeOn < today) best = { ...best, harvestDue: best.freeOn, freeOn: today };
     if (best && daysBetween(today, best.freeOn) <= horizonDays) out.push(best);
   }
   return out.sort((a, b) => a.freeOn.localeCompare(b.freeOn));

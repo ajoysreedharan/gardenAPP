@@ -21,13 +21,15 @@ export function buildSaturdayPlan(i: {
   const items: PlanItem[] = [];
   let totalMin = 0;
 
+  const planItem = (p: PlanTask): PlanItem => ({
+    key: `plan:${p.id}`, group: p.source === 'prep' ? 'season' : 'planned', title: p.title,
+    spotIds: p.spotIds, estMin: p.estMin, daysOverdue: Math.max(0, daysBetween(p.due, i.today)), ref: { kind: 'plan', id: p.id },
+  });
+  const open = i.plans.filter((p) => !p.doneOn && p.due <= saturday);
+
   // Things the owner planned always go in, even past the budget.
-  for (const p of i.plans) {
-    if (p.doneOn || p.due > saturday) continue;
-    items.push({
-      key: `plan:${p.id}`, group: p.source === 'prep' ? 'season' : 'planned', title: p.title,
-      spotIds: p.spotIds, estMin: p.estMin, daysOverdue: Math.max(0, daysBetween(p.due, i.today)), ref: { kind: 'plan', id: p.id },
-    });
+  for (const p of open.filter((x) => x.source === 'user')) {
+    items.push(planItem(p));
     totalMin += p.estMin;
   }
 
@@ -52,6 +54,17 @@ export function buildSaturdayPlan(i: {
     }
   }
 
+  // Season prep comes after overdue care and only fills what budget is left.
+  const prepItems: PlanItem[] = [];
+  for (const p of open.filter((x) => x.source === 'prep').sort((a, b) => a.due.localeCompare(b.due))) {
+    if (totalMin + p.estMin <= i.budgetMin) {
+      prepItems.push(planItem(p));
+      totalMin += p.estMin;
+    } else {
+      heldCount++;
+    }
+  }
+
   for (const kind of ['spray', 'fertilize', 'soil'] as const) {
     const members = chosen.filter((c) => c.kind === kind);
     if (members.length === 0) continue;
@@ -64,6 +77,7 @@ export function buildSaturdayPlan(i: {
     });
   }
 
+  items.push(...prepItems);
   items.sort((a, b) => GROUP_ORDER.indexOf(a.group) - GROUP_ORDER.indexOf(b.group));
   return { saturday, items, totalMin, heldCount, budgetMin: i.budgetMin };
 }

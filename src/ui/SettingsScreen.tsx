@@ -3,7 +3,7 @@ import type { ScreenProps } from './useGarden';
 import type { Durations, Settings } from '../domain/types';
 import { backupFileName, exportBackup, importBackup, parseBackup } from '../domain/backup';
 import { formatShort } from '../domain/dates';
-import { saveSettings } from '../db/db';
+import { getSettings, saveSettings } from '../db/db';
 import { Group } from './parts';
 
 const DURATION_FIELDS: { label: string; get: (d: Durations) => number; set: (d: Durations, v: number) => Durations }[] = [
@@ -26,14 +26,14 @@ function readFile(f: File): Promise<string> {
 }
 
 export function SettingsScreen({ state: s, reload }: ScreenProps) {
-  const [settings, setSettings] = useState<Settings>(s.settings);
+  const settings = s.settings;
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [pending, setPending] = useState<string | null>(null);
 
-  async function update(next: Settings) {
-    setSettings(next);
-    await saveSettings(next);
+  // Re-read before writing so a backup date or restored settings are never overwritten by a stale copy.
+  async function update(change: (cur: Settings) => Settings) {
+    await saveSettings(change(await getSettings()));
     await reload();
   }
 
@@ -85,7 +85,7 @@ export function SettingsScreen({ state: s, reload }: ScreenProps) {
       <Group title="Saturday">
         <label class="field">Saturday time (minutes)
           <input class="input small" type="number" min="15" step="15" aria-label="Saturday time (minutes)" value={settings.budgetMin}
-            onChange={(e) => update({ ...settings, budgetMin: num(e.currentTarget.value, settings.budgetMin) })} />
+            onChange={(e) => { const v = e.currentTarget.value; update((cur) => ({ ...cur, budgetMin: num(v, cur.budgetMin) })); }} />
         </label>
       </Group>
 
@@ -93,7 +93,7 @@ export function SettingsScreen({ state: s, reload }: ScreenProps) {
         {DURATION_FIELDS.map((f) => (
           <label class="field" key={f.label}>{f.label}
             <input class="input small" type="number" min="1" aria-label={f.label} value={f.get(settings.durations)}
-              onChange={(e) => update({ ...settings, durations: f.set(settings.durations, num(e.currentTarget.value, f.get(settings.durations))) })} />
+              onChange={(e) => { const v = e.currentTarget.value; update((cur) => ({ ...cur, durations: f.set(cur.durations, num(v, f.get(cur.durations))) })); }} />
           </label>
         ))}
       </Group>

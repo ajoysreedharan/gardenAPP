@@ -38,9 +38,11 @@ function latest(logs: LogEntry[], spotId: string, kind: LogEntry['kind']): ISODa
   return best;
 }
 
-export function careDueFor(rule: CareRule, logs: LogEntry[], _plants: Plant[], today: ISODate): CareDue | null {
+export function careDueFor(rule: CareRule, logs: LogEntry[], plants: Plant[], today: ISODate): CareDue | null {
   let due: ISODate;
   if (rule.intervalDays === 'afterCrop') {
+    // Soil can't be changed while something is still growing in the spot.
+    if (plants.some((p) => p.spotId === rule.spotId && !p.endedOn)) return null;
     const ended = latest(logs, rule.spotId, 'crop_end');
     const soil = latest(logs, rule.spotId, 'soil');
     if (!ended || (soil && soil >= ended)) return null;

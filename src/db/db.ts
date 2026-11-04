@@ -80,10 +80,11 @@ export async function replaceAll(data: Record<StoreName, unknown[]>, settings: S
 export async function nextSpotId(area: AreaId): Promise<string> {
   const prefix = PREFIX[area];
   const spots = await getAll<{ id: string }>('spots');
-  const max = spots
-    .filter((s) => s.id.startsWith(prefix + '-'))
-    .reduce((m, s) => Math.max(m, Number(s.id.slice(2)) || 0), 0);
-  return `${prefix}-${String(max + 1).padStart(2, '0')}`;
+  // Lowest free number, so a deleted and re-added spot gets its physical tag back.
+  const used = new Set(spots.filter((s) => s.id.startsWith(prefix + '-')).map((s) => Number(s.id.slice(2))));
+  let n = 1;
+  while (used.has(n)) n++;
+  return `${prefix}-${String(n).padStart(2, '0')}`;
 }
 
 export async function requestPersistence(): Promise<boolean> {
