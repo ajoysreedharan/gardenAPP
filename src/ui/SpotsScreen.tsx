@@ -4,7 +4,7 @@ import type { ScreenProps } from './useGarden';
 import { cropById } from '../data/crops';
 import { careDueFor, defaultCareRules, type LastDoneAnswer } from '../domain/care';
 import { addDays, formatShort, newId } from '../domain/dates';
-import { nextSpotId, put, putMany, remove, type StoreName } from '../db/db';
+import { nextSpotId, put, putMany, remove, renameSpot, type StoreName } from '../db/db';
 import { Chip, Group } from './parts';
 import { CropPicker } from './CropPicker';
 import { ProblemPhoto } from './ProblemPhoto';
@@ -42,12 +42,12 @@ function AddSpot({ state: s, reload, onClose }: ScreenProps & { onClose: () => v
   const [nextId, setNextId] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { nextSpotId(area).then(setNextId); }, [area]);
+  useEffect(() => { nextSpotId(area, type).then(setNextId); }, [area, type]);
 
   async function save(another: boolean) {
     if (saving) return;
     setSaving(true);
-    const id = await nextSpotId(area);
+    const id = await nextSpotId(area, type);
     const spot: Spot = { id, area, type, size, createdAt: s.today };
     const writes: [StoreName, { id: string }][] = [['spots', spot]];
     for (const cropId of crops) {
@@ -64,7 +64,7 @@ function AddSpot({ state: s, reload, onClose }: ScreenProps & { onClose: () => v
       setCrops([]);
       setFert('unknown');
       setSoil('unknown');
-      setNextId(await nextSpotId(area));
+      setNextId(await nextSpotId(area, type));
     } else {
       onClose();
     }
@@ -101,10 +101,11 @@ function AddSpot({ state: s, reload, onClose }: ScreenProps & { onClose: () => v
   );
 }
 
-function SpotDetail({ state: s, reload, id, onClose, onLog }: ScreenProps & { id: string; onClose: () => void; onLog?: (spotId: string) => void }) {
+function SpotDetail({ state: s, reload, id, onClose, onRenamed, onLog }: ScreenProps & { id: string; onClose: () => void; onRenamed: (id: string) => void; onLog?: (spotId: string) => void }) {
   const [addingPlant, setAddingPlant] = useState<string[] | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [editing, setEditing] = useState<{ type: SpotType; size: SpotSize } | null>(null);
+  const [editing, setEditing] = useState<{ id: string; type: SpotType; size: SpotSize } | null>(null);
+  const [editError, setEditError] = useState('');
   const spot = s.spots.find((x) => x.id === id);
   if (!spot) return <p class="muted center">Spot not found. <button type="button" class="btn ghost small" onClick={onClose}>Back</button></p>;
 
@@ -130,9 +131,17 @@ function SpotDetail({ state: s, reload, id, onClose, onLog }: ScreenProps & { id
 
   async function saveEdit() {
     if (!editing || !spot) return;
-    await put('spots', { ...spot, ...editing });
+    const newId = editing.id.trim().toUpperCase();
+    if (!newId) return setEditError('Give the spot an ID, e.g. TP-01');
+    if (!/^[A-Z0-9-]+$/.test(newId)) return setEditError('Use only letters, numbers and dashes');
+    if (newId !== id && s.spots.some((x) => x.id === newId)) return setEditError(`${newId} is already used`);
+    const updated = { ...spot, ...editing, id: newId };
+    if (newId === id) await put('spots', updated);
+    else await renameSpot(id, updated);
     setEditing(null);
+    setEditError('');
     await reload();
+    if (newId !== id) onRenamed(newId);
   }
 
   // Deleting frees the ID for reuse, so everything tied to the spot goes with it.
@@ -215,16 +224,20 @@ function SpotDetail({ state: s, reload, id, onClose, onLog }: ScreenProps & { id
 
       {editing && (
         <Group title={`Edit ${spot.id}`}>
+          <label class="field">Spot ID
+            <input class="input small" aria-label="Spot ID" value={editing.id} onInput={(e) => setEditing({ ...editing, id: e.currentTarget.value })} />
+          </label>
           <div class="chips">{SPOT_TYPES.map((t) => <Chip key={t} on={editing.type === t} onClick={() => setEditing({ ...editing, type: t })}>{TYPE_LABEL[t]}</Chip>)}</div>
           <div class="chips">{(['small', 'medium', 'large'] as const).map((z) => <Chip key={z} on={editing.size === z} onClick={() => setEditing({ ...editing, size: z })}>{SIZE_LABEL[z]}</Chip>)}</div>
+          {editError && <p class="error">{editError}</p>}
           <div class="actions">
-            <button type="button" class="btn ghost" onClick={() => setEditing(null)}>Cancel</button>
+            <button type="button" class="btn ghost" onClick={() => { setEditing(null); setEditError(''); }}>Cancel</button>
             <button type="button" class="btn" onClick={saveEdit}>Save changes</button>
           </div>
         </Group>
       )}
       <div class="actions">
-        {!editing && !confirmDelete && <button type="button" class="btn ghost small" onClick={() => setEditing({ type: spot.type, size: spot.size })}>Edit spot</button>}
+        {!editing && !confirmDelete && <button type="button" class="btn ghost small" onClick={() => setEditing({ id: spot.id, type: spot.type, size: spot.size })}>Edit spot</button>}
         {!confirmDelete && <button type="button" class="btn ghost small" onClick={() => setConfirmDelete(true)}>Delete spot</button>}
         {confirmDelete && (
           <>
@@ -243,7 +256,7 @@ export function SpotsScreen(props: ScreenProps & { onLog?: (spotId: string) => v
   const [view, setView] = useState<'list' | 'add' | string>('list');
 
   if (view === 'add') return <AddSpot {...props} onClose={() => setView('list')} />;
-  if (view !== 'list') return <SpotDetail {...props} id={view} onClose={() => setView('list')} />;
+  if (view !== 'list') return <SpotDetail {...props} id={view} onClose={() => setView('list')} onRenamed={setView} />;
 
   function soonest(id: string) {
     const dues = s.careRules.filter((r) => r.spotId === id).map((r) => careDueFor(r, s.logs, s.plants, s.today)).filter((d) => d !== null);
@@ -254,7 +267,7 @@ export function SpotsScreen(props: ScreenProps & { onLog?: (spotId: string) => v
   return (
     <div>
       <div class="actions"><button type="button" class="btn" onClick={() => setView('add')}>+ Add spot</button></div>
-      {s.spots.length === 0 && <p class="muted center">No spots yet. Tag each pot (T-01, T-02…) and add it here.</p>}
+      {s.spots.length === 0 && <p class="muted center">No spots yet. Tag each pot, drum and bed (TP-01, TD-01, TB-01…) and add it here.</p>}
       {AREAS.map((a) => {
         const list = s.spots.filter((x) => x.area === a);
         if (list.length === 0) return null;

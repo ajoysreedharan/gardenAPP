@@ -43,8 +43,8 @@ test('season prep fits in the budget after overdue care', () => {
 
 test('nextSpotId reuses a freed number so re-adding matches the physical tag', async () => {
   useDb(await openGardenDb('test-' + Math.random()));
-  for (const id of ['T-01', 'T-02', 'T-03']) await put('spots', { ...bed, id });
+  for (const id of ['TB-01', 'TB-02', 'TB-03']) await put('spots', { ...bed, id });
   const { remove } = await import('../../src/db/db');
-  await remove('spots', 'T-02');
-  expect(await nextSpotId('terrace')).toBe('T-02');
+  await remove('spots', 'TB-02');
+  expect(await nextSpotId('terrace', 'bed')).toBe('TB-02');
 });

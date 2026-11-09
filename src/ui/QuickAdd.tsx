@@ -104,7 +104,7 @@ export function QuickAdd(p: { state: GardenState; onDone: () => void; onCancel?:
 
       <h3>{kind === 'problem' ? 'Which spot' : 'Where (optional)'}</h3>
       {s.spots.length > 8 && (
-        <input class="input small" placeholder="Find spot, e.g. T-1" value={find} onInput={(e) => setFind(e.currentTarget.value)} />
+        <input class="input small" placeholder="Find spot, e.g. TP-1" value={find} onInput={(e) => setFind(e.currentTarget.value)} />
       )}
       <div class="chips scroll">
         {shown.map((sp) => <Chip key={sp.id} on={spotIds.includes(sp.id)} onClick={() => toggleSpot(sp.id)}>{sp.id}</Chip>)}

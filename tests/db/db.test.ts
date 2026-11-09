@@ -23,11 +23,18 @@ test('settings default when none stored', async () => {
   expect(s.budgetMin).toBe(120);
 });
 
-test('nextSpotId counts up per area prefix', async () => {
-  expect(await nextSpotId('terrace')).toBe('T-01');
+test('nextSpotId counts up per area and type prefix', async () => {
+  expect(await nextSpotId('terrace', 'pot')).toBe('TP-01');
+  await put('spots', spot('TP-01'));
+  expect(await nextSpotId('terrace', 'pot')).toBe('TP-02');
+  expect(await nextSpotId('terrace', 'drum')).toBe('TD-01');
+  expect(await nextSpotId('terrace', 'bed')).toBe('TB-01');
+  expect(await nextSpotId('balconyB', 'pot')).toBe('BP-01');
+});
+
+test('old-style IDs do not affect the new numbering', async () => {
   await put('spots', spot('T-01'));
-  expect(await nextSpotId('terrace')).toBe('T-02');
-  expect(await nextSpotId('balconyB')).toBe('B-01');
+  expect(await nextSpotId('terrace', 'pot')).toBe('TP-01');
 });
 
 test('replaceAll is atomic: a bad item leaves old data intact', async () => {

@@ -21,7 +21,7 @@ From then on, open it from the home-screen icon. It works without internet.
 
 ## First Saturday
 
-1. Tag each pot and bed: **T-01, T-02…** on the terrace, **A-01…** on the flower balcony, **B-01…** on the leafy balcony.
+1. Tag each pot, drum and bed. IDs are the area letter (**T** terrace, **A** flower balcony, **B** leafy balcony) plus the type letter (**P** pot, **D** drum, **B** bed): **TP-01**, **TD-01**, **TB-01**, **AP-01**… You can change any ID later with **Edit spot**.
 2. In **Spots**, tap **+ Add spot** for each one. Use **Save & add another** to go quickly.
 3. If you don't remember when you last fertilized or changed soil, leave it on **Don't know** — the app spreads those over your next three Saturdays.
 

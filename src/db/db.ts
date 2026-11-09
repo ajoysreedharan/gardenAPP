@@ -1,5 +1,5 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import type { AreaId, Settings } from '../domain/types';
+import type { AreaId, PlanTask, Settings, Spot, SpotType } from '../domain/types';
 
 export type StoreName = 'spots' | 'plants' | 'careRules' | 'logs' | 'plans' | 'problems' | 'courses' | 'seeds' | 'crops';
 export const STORES: StoreName[] = ['spots', 'plants', 'careRules', 'logs', 'plans', 'problems', 'courses', 'seeds', 'crops'];
@@ -10,6 +10,7 @@ export const DEFAULT_SETTINGS: Settings = {
 };
 
 const PREFIX: Record<AreaId, string> = { terrace: 'T', balconyA: 'A', balconyB: 'B' };
+const TYPE_LETTER: Record<SpotType, string> = { pot: 'P', drum: 'D', bed: 'B' };
 
 export function openGardenDb(name = 'garden'): Promise<IDBPDatabase> {
   // v2 added 'crops'; create whatever an older db is missing.
@@ -88,14 +89,37 @@ export async function replaceAll(data: Record<StoreName, unknown[]>, settings: S
   }
 }
 
-export async function nextSpotId(area: AreaId): Promise<string> {
-  const prefix = PREFIX[area];
+// Area letter + type letter, e.g. TP-01 for a terrace pot, TD-01 for a terrace drum.
+export async function nextSpotId(area: AreaId, type: SpotType): Promise<string> {
+  const prefix = PREFIX[area] + TYPE_LETTER[type];
   const spots = await getAll<{ id: string }>('spots');
   // Lowest free number, so a deleted and re-added spot gets its physical tag back.
-  const used = new Set(spots.filter((s) => s.id.startsWith(prefix + '-')).map((s) => Number(s.id.slice(2))));
+  const used = new Set(spots.filter((s) => s.id.startsWith(prefix + '-')).map((s) => Number(s.id.slice(prefix.length + 1))));
   let n = 1;
   while (used.has(n)) n++;
   return `${prefix}-${String(n).padStart(2, '0')}`;
+}
+
+// Gives a spot a new ID and moves everything tied to it, all in one transaction.
+export async function renameSpot(oldId: string, spot: Spot): Promise<void> {
+  const tx = (await db()).transaction(STORES, 'readwrite');
+  const linked = ['plants', 'careRules', 'logs', 'problems', 'courses'] as const;
+  const mention = new RegExp(`\\b${oldId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'g');
+  const swap = (ids: string[]) => ids.map((x) => (x === oldId ? spot.id : x));
+  await tx.objectStore('spots').delete(oldId);
+  await tx.objectStore('spots').put(spot);
+  for (const s of linked) {
+    for (const item of await tx.objectStore(s).getAll()) {
+      if (item.spotId === oldId) await tx.objectStore(s).put({ ...item, spotId: spot.id });
+    }
+  }
+  for (const p of (await tx.objectStore('plans').getAll()) as PlanTask[]) {
+    if (!p.spotIds.includes(oldId)) continue;
+    // Prep task titles name the spot, e.g. "Start Tomato seedlings (for T-03)".
+    const title = p.source === 'prep' ? p.title.replace(mention, spot.id) : p.title;
+    await tx.objectStore('plans').put({ ...p, title, spotIds: swap(p.spotIds), doneSpotIds: swap(p.doneSpotIds) });
+  }
+  await tx.done;
 }
 
 export async function requestPersistence(): Promise<boolean> {
