@@ -3,13 +3,16 @@ import type { ScreenProps } from './useGarden';
 import type { Durations, Settings } from '../domain/types';
 import { backupFileName, exportBackup, importBackup, parseBackup } from '../domain/backup';
 import { formatShort } from '../domain/dates';
-import { getSettings, saveSettings } from '../db/db';
+import { getSettings, remove, saveSettings } from '../db/db';
+import { SIZE_LABEL } from './labels';
 import { Group } from './parts';
 
 const DURATION_FIELDS: { label: string; get: (d: Durations) => number; set: (d: Durations, v: number) => Durations }[] = [
   { label: 'Fertilize a pot', get: (d) => d.fertilize.pot, set: (d, v) => ({ ...d, fertilize: { ...d.fertilize, pot: v } }) },
+  { label: 'Fertilize a drum', get: (d) => d.fertilize.drum, set: (d, v) => ({ ...d, fertilize: { ...d.fertilize, drum: v } }) },
   { label: 'Fertilize a bed', get: (d) => d.fertilize.bed, set: (d, v) => ({ ...d, fertilize: { ...d.fertilize, bed: v } }) },
   { label: 'Change soil in a pot', get: (d) => d.soil.pot, set: (d, v) => ({ ...d, soil: { ...d.soil, pot: v } }) },
+  { label: 'Change soil in a drum', get: (d) => d.soil.drum, set: (d, v) => ({ ...d, soil: { ...d.soil, drum: v } }) },
   { label: 'Change soil in a bed', get: (d) => d.soil.bed, set: (d, v) => ({ ...d, soil: { ...d.soil, bed: v } }) },
   { label: 'Spray one spot', get: (d) => d.spray, set: (d, v) => ({ ...d, spray: v }) },
   { label: 'Till one pot', get: (d) => d.till, set: (d, v) => ({ ...d, till: v }) },
@@ -80,8 +83,28 @@ export function SettingsScreen({ state: s, reload }: ScreenProps) {
     setPending(null);
   }
 
+  // Plants and seeds look up a crop's name and harvest time, so only unused crops can go.
+  const inUse = (id: string) => s.plants.some((p) => p.cropId === id) || s.seeds.some((x) => x.cropId === id);
+
+  async function removeCrop(id: string) {
+    await remove('crops', id);
+    await reload();
+  }
+
   return (
     <div>
+      <Group title="My crops">
+        {s.crops.length === 0 && <div class="row"><span class="row-text muted">None yet. Search for a crop when adding a plant, then tap + Add.</span></div>}
+        {s.crops.map((c) => (
+          <div class="row" key={c.id}>
+            <span class="row-text">{c.name} · {c.daysToHarvest} days · {SIZE_LABEL[c.minSize].toLowerCase()} pot or bigger</span>
+            {inUse(c.id)
+              ? <span class="tag">in use</span>
+              : <button type="button" class="btn ghost small" aria-label={`Remove ${c.name}`} onClick={() => removeCrop(c.id)}>Remove</button>}
+          </div>
+        ))}
+      </Group>
+
       <Group title="Saturday">
         <label class="field">Saturday time (minutes)
           <input class="input small" type="number" min="15" step="15" aria-label="Saturday time (minutes)" value={settings.budgetMin}

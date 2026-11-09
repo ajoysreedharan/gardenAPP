@@ -1,23 +1,26 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import type { CareRule, ISODate, LogEntry, Plant, PlanTask, Problem, Seed, Settings, Spot, SprayCourse } from '../domain/types';
 import { getAll, getSettings } from '../db/db';
+import { setCustomCrops, type Crop } from '../data/crops';
 import { allCareDue, type CareDue } from '../domain/care';
 import { today as todayDate } from '../domain/dates';
 
 export interface GardenState {
   spots: Spot[]; plants: Plant[]; careRules: CareRule[]; logs: LogEntry[]; plans: PlanTask[];
-  problems: Problem[]; courses: SprayCourse[]; seeds: Seed[]; settings: Settings; today: ISODate;
+  problems: Problem[]; courses: SprayCourse[]; seeds: Seed[]; crops: Crop[]; settings: Settings; today: ISODate;
 }
 
 export interface ScreenProps { state: GardenState; reload: () => Promise<void> }
 
 export async function loadState(today: ISODate = todayDate()): Promise<GardenState> {
-  const [spots, plants, careRules, logs, plans, problems, courses, seeds, settings] = await Promise.all([
+  const [spots, plants, careRules, logs, plans, problems, courses, seeds, crops, settings] = await Promise.all([
     getAll<Spot>('spots'), getAll<Plant>('plants'), getAll<CareRule>('careRules'), getAll<LogEntry>('logs'),
-    getAll<PlanTask>('plans'), getAll<Problem>('problems'), getAll<SprayCourse>('courses'), getAll<Seed>('seeds'), getSettings(),
+    getAll<PlanTask>('plans'), getAll<Problem>('problems'), getAll<SprayCourse>('courses'), getAll<Seed>('seeds'), getAll<Crop>('crops'), getSettings(),
   ]);
   spots.sort((a, b) => a.id.localeCompare(b.id));
-  return { spots, plants, careRules, logs, plans, problems, courses, seeds, settings, today };
+  crops.sort((a, b) => a.name.localeCompare(b.name));
+  setCustomCrops(crops);
+  return { spots, plants, careRules, logs, plans, problems, courses, seeds, crops, settings, today };
 }
 
 export function careDueNow(s: GardenState): CareDue[] {

@@ -1,5 +1,5 @@
 import type { ISODate, Plant, PlanTask, Seed, Spot, SpotSize } from './types';
-import { CROPS, cropById, type Crop } from '../data/crops';
+import { allCrops, cropById, type Crop } from '../data/crops';
 import { seasonOf } from './seasons';
 import { addDays, daysBetween, newId } from './dates';
 
@@ -31,7 +31,7 @@ export function spotsFreeingUp(spots: Spot[], plants: Plant[], today: ISODate, h
 
 export function suggestCrops(spot: Spot, freeOn: ISODate): Crop[] {
   const season = seasonOf(freeOn);
-  const fits = CROPS.filter((c) => c.seasons.includes(season) && SIZE_RANK[spot.size] >= SIZE_RANK[c.minSize]);
+  const fits = allCrops().filter((c) => c.seasons.includes(season) && SIZE_RANK[spot.size] >= SIZE_RANK[c.minSize]);
   if (spot.area === 'balconyA') return fits.filter((c) => c.kind === 'flowering');
   if (spot.area === 'balconyB') return [...fits.filter((c) => c.kind === 'leafy'), ...fits.filter((c) => c.kind !== 'leafy')];
   return fits;

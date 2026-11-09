@@ -47,8 +47,10 @@ export function parseBackup(text: string): BackupFile {
   } catch {
     throw bad;
   }
-  if (!f || f.app !== 'garden-app' || f.version !== 1 || typeof f.settings !== 'object' || typeof f.data !== 'object') throw bad;
-  for (const s of STORES) if (!Array.isArray(f.data?.[s])) throw bad;
+  if (!f || f.app !== 'garden-app' || f.version !== 1 || typeof f.settings !== 'object' || typeof f.data !== 'object' || !f.data) throw bad;
+  // Backups made before custom crops existed have no 'crops' list.
+  f.data.crops ??= [];
+  for (const s of STORES) if (!Array.isArray(f.data[s])) throw bad;
   return f as BackupFile;
 }
 

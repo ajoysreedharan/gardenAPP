@@ -11,6 +11,7 @@ import { ProblemPhoto } from './ProblemPhoto';
 import { AREA_LABEL, LOG_LABEL, SIZE_LABEL, TYPE_LABEL, cropName, dueTag } from './labels';
 
 const AREAS: AreaId[] = ['terrace', 'balconyA', 'balconyB'];
+const SPOT_TYPES: SpotType[] = ['pot', 'drum', 'bed'];
 const ANSWERS: { a: LastDoneAnswer; label: string }[] = [
   { a: 'thisWeek', label: 'This week' }, { a: 'twoWeeks', label: '~2 weeks' }, { a: 'monthPlus', label: 'A month or more' }, { a: 'unknown', label: "Don't know" },
 ];
@@ -75,8 +76,8 @@ function AddSpot({ state: s, reload, onClose }: ScreenProps & { onClose: () => v
       <Group title="Where">
         <div class="chips">{AREAS.map((a) => <Chip key={a} on={area === a} onClick={() => setArea(a)}>{AREA_LABEL[a]}</Chip>)}</div>
       </Group>
-      <Group title="Pot or bed, and size">
-        <div class="chips">{(['pot', 'bed'] as const).map((t) => <Chip key={t} on={type === t} onClick={() => setType(t)}>{TYPE_LABEL[t]}</Chip>)}</div>
+      <Group title="Pot, drum or bed, and size">
+        <div class="chips">{SPOT_TYPES.map((t) => <Chip key={t} on={type === t} onClick={() => setType(t)}>{TYPE_LABEL[t]}</Chip>)}</div>
         <div class="chips">{(['small', 'medium', 'large'] as const).map((z) => <Chip key={z} on={size === z} onClick={() => setSize(z)}>{SIZE_LABEL[z]}</Chip>)}</div>
       </Group>
       <Group title="What's growing (up to 2, or leave empty)">
@@ -214,7 +215,7 @@ function SpotDetail({ state: s, reload, id, onClose, onLog }: ScreenProps & { id
 
       {editing && (
         <Group title={`Edit ${spot.id}`}>
-          <div class="chips">{(['pot', 'bed'] as const).map((t) => <Chip key={t} on={editing.type === t} onClick={() => setEditing({ ...editing, type: t })}>{TYPE_LABEL[t]}</Chip>)}</div>
+          <div class="chips">{SPOT_TYPES.map((t) => <Chip key={t} on={editing.type === t} onClick={() => setEditing({ ...editing, type: t })}>{TYPE_LABEL[t]}</Chip>)}</div>
           <div class="chips">{(['small', 'medium', 'large'] as const).map((z) => <Chip key={z} on={editing.size === z} onClick={() => setEditing({ ...editing, size: z })}>{SIZE_LABEL[z]}</Chip>)}</div>
           <div class="actions">
             <button type="button" class="btn ghost" onClick={() => setEditing(null)}>Cancel</button>

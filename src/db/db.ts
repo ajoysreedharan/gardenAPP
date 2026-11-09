@@ -1,21 +1,22 @@
 import { openDB, type IDBPDatabase } from 'idb';
 import type { AreaId, Settings } from '../domain/types';
 
-export type StoreName = 'spots' | 'plants' | 'careRules' | 'logs' | 'plans' | 'problems' | 'courses' | 'seeds';
-export const STORES: StoreName[] = ['spots', 'plants', 'careRules', 'logs', 'plans', 'problems', 'courses', 'seeds'];
+export type StoreName = 'spots' | 'plants' | 'careRules' | 'logs' | 'plans' | 'problems' | 'courses' | 'seeds' | 'crops';
+export const STORES: StoreName[] = ['spots', 'plants', 'careRules', 'logs', 'plans', 'problems', 'courses', 'seeds', 'crops'];
 
 export const DEFAULT_SETTINGS: Settings = {
   budgetMin: 120,
-  durations: { fertilize: { pot: 3, bed: 8 }, soil: { pot: 15, bed: 20 }, spray: 2, till: 5, plan: 15 },
+  durations: { fertilize: { pot: 3, drum: 5, bed: 8 }, soil: { pot: 15, drum: 25, bed: 20 }, spray: 2, till: 5, plan: 15 },
 };
 
 const PREFIX: Record<AreaId, string> = { terrace: 'T', balconyA: 'A', balconyB: 'B' };
 
 export function openGardenDb(name = 'garden'): Promise<IDBPDatabase> {
-  return openDB(name, 1, {
+  // v2 added 'crops'; create whatever an older db is missing.
+  return openDB(name, 2, {
     upgrade(db) {
-      for (const s of STORES) db.createObjectStore(s, { keyPath: 'id' });
-      db.createObjectStore('meta');
+      for (const s of STORES) if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains('meta')) db.createObjectStore('meta');
     },
   });
 }
@@ -52,8 +53,18 @@ export async function remove(store: StoreName, id: string): Promise<void> {
   await (await db()).delete(store, id);
 }
 
+// Fills in anything added since the settings were saved (such as drum timings).
+function withDefaults(s: Settings): Settings {
+  const d = DEFAULT_SETTINGS.durations;
+  return {
+    ...s,
+    durations: { ...d, ...s.durations, fertilize: { ...d.fertilize, ...s.durations?.fertilize }, soil: { ...d.soil, ...s.durations?.soil } },
+  };
+}
+
 export async function getSettings(): Promise<Settings> {
-  return (await (await db()).get('meta', 'settings')) ?? structuredClone(DEFAULT_SETTINGS);
+  const saved: Settings | undefined = await (await db()).get('meta', 'settings');
+  return saved ? withDefaults(saved) : structuredClone(DEFAULT_SETTINGS);
 }
 
 export async function saveSettings(s: Settings): Promise<void> {

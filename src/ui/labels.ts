@@ -2,7 +2,7 @@ import type { AreaId, LogKind, SpotSize, SpotType } from '../domain/types';
 import { cropById } from '../data/crops';
 
 export const AREA_LABEL: Record<AreaId, string> = { terrace: 'Terrace', balconyA: 'Flower balcony', balconyB: 'Leafy balcony' };
-export const TYPE_LABEL: Record<SpotType, string> = { pot: 'Pot', bed: 'Bed' };
+export const TYPE_LABEL: Record<SpotType, string> = { pot: 'Pot', drum: 'Drum', bed: 'Bed' };
 export const SIZE_LABEL: Record<SpotSize, string> = { small: 'Small', medium: 'Medium', large: 'Large' };
 export const LOG_LABEL: Record<LogKind, string> = {
   fertilize: 'Fertilizer', soil: 'Soil changed', spray: 'Sprayed', till: 'Tilled', prune: 'Pruned',

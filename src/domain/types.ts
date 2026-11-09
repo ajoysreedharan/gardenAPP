@@ -1,6 +1,6 @@
 export type ISODate = string; // 'YYYY-MM-DD', local calendar date
 export type AreaId = 'terrace' | 'balconyA' | 'balconyB';
-export type SpotType = 'pot' | 'bed';
+export type SpotType = 'pot' | 'drum' | 'bed';
 export type SpotSize = 'small' | 'medium' | 'large';
 export type PlantKind = 'fruitveg' | 'leafy' | 'flowering';
 

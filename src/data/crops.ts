@@ -34,6 +34,28 @@ export const CROPS: Crop[] = [
   { id: 'papaya', name: 'Papaya', kind: 'fruitveg', seasons: ALL, method: 'sapling', daysToHarvest: 365, minSize: 'large' },
 ];
 
+// Crops the owner added. Kept here so lookups stay synchronous; loadState fills it from the db.
+let custom: Crop[] = [];
+
+export function setCustomCrops(list: Crop[]): void {
+  custom = list;
+}
+
+export function addCustomCrop(c: Crop): void {
+  custom = [...custom.filter((x) => x.id !== c.id), c];
+}
+
+export function allCrops(): Crop[] {
+  return [...CROPS, ...custom];
+}
+
+export const isCustomCrop = (id: string) => id.startsWith('custom-');
+
 export function cropById(id: string): Crop | undefined {
-  return CROPS.find((c) => c.id === id);
+  return CROPS.find((c) => c.id === id) ?? custom.find((c) => c.id === id);
+}
+
+export function cropByName(name: string): Crop | undefined {
+  const n = name.trim().toLowerCase();
+  return allCrops().find((c) => c.name.toLowerCase() === n);
 }

@@ -73,3 +73,9 @@ test('lateness counts from today, not from Saturday', () => {
   });
   expect(p.items[0]).toMatchObject({ title: 'Spray: T-01', daysOverdue: 0 });
 });
+
+test('a drum uses the drum timing', () => {
+  const drum: Spot = { ...spot('T-05'), type: 'drum' };
+  const p = buildSaturdayPlan({ ...base, spots: [drum], careDue: [care('T-05', '2026-11-07', 'soil')], today: '2026-11-07' });
+  expect(p.totalMin).toBe(durations.soil.drum);
+});
